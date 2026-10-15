@@ -1,9 +1,12 @@
 # Production stack. Entry point is the (external) Nginx Proxy Manager network:
 # NPM terminates TLS and proxies to the "php-app" container by name on port 80.
 #
-# Before first start / on every deploy:
+# The application image (docker/app.Dockerfile) compiles PHP dependencies and
+# frontend assets in a shared builder stage. Both php-fpm and nginx targets
+# pull from that stage — no host-side PHP or manual asset-map:compile needed.
+#
+# Deploy:
 #   cp stack.env.dist stack.env && chmod 600 stack.env   # fill in real secrets
-#   bin/console asset-map:compile                        # generate public/assets (host)
 #   docker compose -f docker-compose.hosting.yaml build
 #   docker compose -f docker-compose.hosting.yaml run --rm php-fpm \
 #       ./bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
@@ -14,7 +17,9 @@ services:
   php-app:
     build:
       context: .
-      dockerfile: ./docker/nginx/Dockerfile
+      dockerfile: ./docker/app.Dockerfile
+      target: nginx
+    image: tronopay-php-app:prod
     restart: unless-stopped
     init: true
     depends_on:
@@ -37,7 +42,9 @@ services:
   php-fpm:
     build:
       context: .
-      dockerfile: ./docker/php-fpm/Dockerfile
+      dockerfile: ./docker/app.Dockerfile
+      target: prod
+    image: tronopay-php-fpm:prod
     environment:
       APP_ENV: prod
     env_file:
@@ -74,7 +81,9 @@ services:
     # mailer/notifier). Scale horizontally if needed.
     build:
       context: .
-      dockerfile: ./docker/php-fpm/Dockerfile
+      dockerfile: ./docker/app.Dockerfile
+      target: prod
+    image: tronopay-php-fpm:prod
     command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=256M"]
     environment:
       APP_ENV: prod
@@ -106,7 +115,9 @@ services:
     # interval). Keep a single instance.
     build:
       context: .
-      dockerfile: ./docker/php-fpm/Dockerfile
+      dockerfile: ./docker/app.Dockerfile
+      target: prod
+    image: tronopay-php-fpm:prod
     command: ["php", "bin/console", "messenger:consume", "scheduler_default", "--time-limit=3600"]
     environment:
       APP_ENV: prod
