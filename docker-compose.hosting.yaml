@@ -20,6 +20,8 @@ services:
       dockerfile: ./docker/app.Dockerfile
       target: nginx
     image: tronopay-php-app:prod
+    # Build locally; never try to pull this image from a registry.
+    pull_policy: build
     restart: unless-stopped
     init: true
     depends_on:
@@ -45,6 +47,8 @@ services:
       dockerfile: ./docker/app.Dockerfile
       target: prod
     image: tronopay-php-fpm:prod
+    # Build locally; never try to pull this image from a registry.
+    pull_policy: build
     environment:
       APP_ENV: prod
     env_file:
@@ -84,6 +88,8 @@ services:
       dockerfile: ./docker/app.Dockerfile
       target: prod
     image: tronopay-php-fpm:prod
+    # Build locally; never try to pull this image from a registry.
+    pull_policy: build
     command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=256M"]
     environment:
       APP_ENV: prod
@@ -118,6 +124,8 @@ services:
       dockerfile: ./docker/app.Dockerfile
       target: prod
     image: tronopay-php-fpm:prod
+    # Build locally; never try to pull this image from a registry.
+    pull_policy: build
     command: ["php", "bin/console", "messenger:consume", "scheduler_default", "--time-limit=3600"]
     environment:
       APP_ENV: prod
