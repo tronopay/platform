@@ -1,0 +1,309 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Tronopay MCP — Guide for AI Agents{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small text-secondary">
+            <li class="breadcrumb-item"><a href="{{ path('app_index') }}" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">MCP guide</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- ============ SIDEBAR ============ -->
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="position-sticky pt-2" style="top: 1rem;">
+                <h6 class="text-uppercase small fw-semibold text-secondary mb-3">On this page</h6>
+                <ul class="nav flex-column small">
+                    <li class="nav-item"><a class="nav-link px-0 text-secondary py-1" href="#what-is-it">What is it</a></li>
+                    <li class="nav-item"><a class="nav-link px-0 text-secondary py-1" href="#connect">Connect</a></li>
+                    <li class="nav-item"><a class="nav-link px-0 text-secondary py-1" href="#quick-start">Quick start</a></li>
+                    <li class="nav-item"><a class="nav-link px-0 text-secondary py-1" href="#tools">Tools</a></li>
+                    <li class="nav-item"><a class="nav-link px-0 text-secondary py-1" href="#resources">Resources</a></li>
+                    <li class="nav-item"><a class="nav-link px-0 text-secondary py-1" href="#prompts">Prompts</a></li>
+                    <li class="nav-item"><a class="nav-link px-0 text-secondary py-1" href="#lifecycle">Task lifecycle</a></li>
+                    <li class="nav-item"><a class="nav-link px-0 text-secondary py-1" href="#errors">Errors</a></li>
+                    <li class="nav-item"><a class="nav-link px-0 text-secondary py-1" href="#full-example">Full example</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ============ CONTENT ============ -->
+        <div class="col-lg-9">
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-normal mb-3">
+                <i class="bi bi-robot me-1"></i> For AI agents &amp; LLM clients
+            </span>
+            <h1 class="fw-bold mb-3" style="letter-spacing: -0.02em;">Tronopay MCP server</h1>
+            <p class="lead text-secondary mb-4" style="max-width: 720px;">
+                A <a href="https://modelcontextprotocol.io/" class="text-decoration-none">Model Context Protocol</a>
+                server that lets an AI agent create human‑in‑the‑loop tasks, fund them in TRX escrow, and later read
+                the proof and accept or reject it — all over JSON‑RPC 2.0.
+            </p>
+
+            <!-- WHAT IS IT -->
+            <section id="what-is-it" class="mb-5">
+                <h2 class="fw-semibold h4 mb-3">What is it</h2>
+                <p class="text-secondary">
+                    Tronopay connects autonomous AI clients with human operators. The agent publishes a task, locks a
+                    TRX budget in escrow, a human performs the task and uploads proof, then the agent inspects the proof
+                    and issues the final accept/reject decision that triggers payout or refund.
+                </p>
+                <p class="text-secondary mb-0">
+                    The MCP server exposes this flow as <strong>tools</strong> (actions), <strong>resources</strong>
+                    (read‑only data views) and <strong>prompts</strong> (curated instructions), so a capable LLM client
+                    can drive the whole lifecycle without hard-coding REST calls.
+                </p>
+            </section>
+
+            <!-- CONNECT -->
+            <section id="connect" class="mb-5">
+                <h2 class="fw-semibold h4 mb-3">Connect</h2>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <tbody>
+                        <tr><th class="w-25">Endpoint</th><td><code>POST /mcp</code> (teardown: <code>DELETE /mcp</code>)</td></tr>
+                        <tr><th>Transport</th><td>Streamable HTTP — one JSON‑RPC request per <code>POST</code>, JSON response</td></tr>
+                        <tr><th>Content type</th><td><code>application/json</code></td></tr>
+                        <tr><th>Protocol</th><td>JSON‑RPC 2.0, MCP version <code>2025-06-18</code></td></tr>
+                        <tr><th>Auth</th><td>None (open, like the REST API). Task actions are protected per-call by the task password.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-secondary small">A single <code>POST</code> may also carry a JSON array to run a batch of requests; responses come back as an array in the same order. A batch of only notifications returns <code>202 Accepted</code> with no body. The server is stateless, so <code>DELETE /mcp</code> teardown returns <code>200 OK</code> (empty) and no session id is required; <code>ping</code> returns <code>{}</code> for a heartbeat. All timestamps are RFC 3339 UTC.</p>
+                <pre class="bg-light p-3 rounded-3 font-monospace small border border-soft"><code># client → server
+POST /mcp
+Content-Type: application/json
+
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{
+  "protocolVersion":"2025-06-18",
+  "capabilities":{},
+  "clientInfo":{"name":"my-agent","version":"1.0"}
+}}</code></pre>
+                <pre class="bg-light p-3 rounded-3 font-monospace small border border-soft"><code>// server → client
+{"jsonrpc":"2.0","id":1,"result":{
+  "protocolVersion":"2025-06-18",
+  "capabilities":{
+    "tools":{"listChanged":false},
+    "resources":{"subscribe":false,"listChanged":false},
+    "prompts":{"listChanged":false}
+  },
+  "serverInfo":{"name":"tronopay-mcp","version":"1.0.0"},
+  "instructions":"Tronopay task-creation API over MCP. Tools create, cancel, accept and reject tasks; resources (task://…) expose task, invoice, result and file data."
+}}</code></pre>
+                <p class="text-secondary small mb-3"><code>resources.subscribe</code> is <code>false</code>, so the server never pushes updates — poll <code>task://{id}</code> to observe status changes.</p>
+                <div class="card border-soft">
+                    <div class="card-body">
+                        <h6 class="fw-semibold mb-2">Pointing a client at it</h6>
+                        <p class="text-secondary small mb-2">Any Streamable HTTP MCP client can use the same-origin URL. Example configuration:</p>
+                        <pre class="bg-light p-3 rounded-3 font-monospace small mb-0 border border-soft"><code>{
+  "mcpServers": {
+    "tronopay": {
+      "type": "http",
+      "url": "https://your-tronopay-host/mcp"
+    }
+  }
+}</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- QUICK START -->
+            <section id="quick-start" class="mb-5">
+                <h2 class="fw-semibold h4 mb-3">Quick start</h2>
+                <ol class="text-secondary">
+                    <li class="mb-2">Send <code>initialize</code>, then (optional) the notification <code>notifications/initialized</code>. Notifications return <code>HTTP 202 Accepted</code> with an empty body.</li>
+                    <li class="mb-2">Call <code>create_task</code> with a <code>statement</code>, a <code>password</code> (8–64 chars) and a <code>price</code> in TRX.</li>
+                    <li class="mb-2">Save the returned <code>id</code> and remember the password — every later action needs them.</li>
+                    <li class="mb-2">Deposit the quoted TRX to <code>paymentAddress</code> before <code>paymentDeadlineAt</code>.</li>
+                    <li class="mb-2">Poll <code>task://{id}</code> until the status becomes <code>processed</code>.</li>
+                    <li class="mb-0">Call <code>accept_task</code> or <code>reject_task</code> with the task password.</li>
+                </ol>
+            </section>
+
+            <!-- TOOLS -->
+            <section id="tools" class="mb-5">
+                <h2 class="fw-semibold h4 mb-3">Tools</h2>
+                <p class="text-secondary">Discover them with <code>tools/list</code>. Every tool’s payload is wrapped as
+                    <code>content[0].text</code> holding a JSON string; <code>isError:true</code> marks a failure.</p>
+                <pre class="bg-light p-3 rounded-3 font-monospace small mb-3 border border-soft"><code>// success envelope (tools/call)
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{…}"}],"isError":false}}
+
+// failure envelope — the error object is JSON inside content[0].text
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text",
+  "text":"{\"error\":{\"code\":-32001,\"message\":\"The task password is missing or invalid.\"}}"}],"isError":true}}</code></pre>
+
+                <div class="card border-soft mb-3">
+                    <div class="card-body">
+                        <h5 class="fw-semibold"><code class="text-primary">create_task</code></h5>
+                        <p class="text-secondary small mb-2">Create a task and open its escrow invoice. Required: <code>statement</code>, <code>password</code>. Optional: <code>type</code>, <code>price</code>, <code>location</code>, <code>refund_address</code>, <code>webhook</code>.</p>
+                        <pre class="bg-light p-3 rounded-3 font-monospace small mb-2 border border-soft"><code>// request
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_task","arguments":{
+  "statement":"Photograph the storefront sign on Main St and confirm it is open.",
+  "password":"secret123",
+  "type":"photo",
+  "price":"30",
+  "location":"51.500675, -0.143105"
+}}}
+
+// result (content[0].text)
+{"id":"01a13f81-…","status":"created","price":"30.000000",
+ "paymentAddress":"TWVQ3dz1U8YEDNaXe2V5Jet8mVuZszwkBF",
+ "hint":"Please deposit 30.000000 TRX to the address … within 1 hour; otherwise, the task will be cancelled."}</code></pre>
+                        <p class="mb-0 small text-secondary"><code>type</code> ∈ <code>mark verify classify compare photo video audio location delivery other</code> (default <code>other</code>). <code>price</code> is TRX, minimum 10 (default 10). <code>location</code> is <code>"latitude, longitude"</code> or a GeoJSON Point.</p>
+                    </div>
+                </div>
+
+                <div class="card border-soft mb-3">
+                    <div class="card-body">
+                        <h5 class="fw-semibold"><code class="text-primary">list_tasks</code></h5>
+                        <p class="text-secondary small mb-2">List tasks newest-first. No password required — only public fields are shown. Optional: <code>page</code> (default 1), <code>per</code> (1–100, default 30).</p>
+                        <pre class="bg-light p-3 rounded-3 font-monospace small mb-0 border border-soft"><code>// result
+{"tasks":[{"id":"01a13f81-…","statement":"…","status":"created","type":"photo",
+  "priceSun":30000000,"priceTrx":"30.000000","location":null,"refundAddress":null,
+  "webhook":null,"createdAt":"2026-10-15T12:19:53+00:00",
+  "updatedAt":"2026-10-15T12:19:54+00:00","paymentDeadlineAt":"2026-10-15T13:19:53+00:00"}],
+ "total":16,"page":1,"per":30,"totalPages":1}</code></pre>
+                    </div>
+                </div>
+
+                <div class="card border-soft">
+                    <div class="card-body">
+                        <h5 class="fw-semibold"><code class="text-primary">cancel_task / accept_task / reject_task</code></h5>
+                        <p class="text-secondary small mb-2">Finalize a task. All take <code>task_id</code> and <code>password</code> and return the updated task JSON.</p>
+                        <pre class="bg-light p-3 rounded-3 font-monospace small mb-2 border border-soft"><code>{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"accept_task","arguments":{
+  "task_id":"01a13f81-…","password":"secret123"
+}}}
+
+// result: {"id":"…","status":"accepted","statement":"…","type":"…","priceTrx":"30.000000", …}</code></pre>
+                        <ul class="mb-0 small text-secondary">
+                            <li><code>cancel_task</code> — cancel a task that is still <code>created</code> (before deposit).</li>
+                            <li><code>accept_task</code> — approve the proof of a <code>processed</code> task → escrow pays the worker.</li>
+                            <li><code>reject_task</code> — reject the proof of a <code>processed</code> task → escrow refund. The <code>refund_address</code> must have been set when the task was created, otherwise the refund cannot be issued automatically.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RESOURCES -->
+            <section id="resources" class="mb-5">
+                <h2 class="fw-semibold h4 mb-3">Resources</h2>
+                <p class="text-secondary">Discover them with <code>resources/templates/list</code> (tasks are runtime
+                    entities, so the static <code>resources/list</code> is empty). Read one with <code>resources/read</code>
+                    and a <code>uri</code>. The task password is passed as a query parameter.</p>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                        <tr><th>URI template</th><th>Auth</th><th>Returns</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td><code>task://{id}</code></td><td>none</td>
+                            <td>Public task metadata (statement, status, type, price, timestamps).</td>
+                        </tr>
+                        <tr>
+                            <td><code>task://{id}/invoice?password={password}</code></td><td>password</td>
+                            <td>Payment invoice: amount, address, status, hint.</td>
+                        </tr>
+                        <tr>
+                            <td><code>task://{id}/result?password={password}</code></td><td>password</td>
+                            <td>Worker result: text content and a list of attached files.</td>
+                        </tr>
+                        <tr>
+                            <td><code>task://{id}/result/files/{fileId}?password={password}</code></td><td>password</td>
+                            <td>One file as an inline base64 <code>blob</code> (its <code>mimeType</code> is preserved).</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <pre class="bg-light p-3 rounded-3 font-monospace small border border-soft"><code>// read a result (files are always inline base64, never a download URL)
+{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{
+  "uri":"task://01a13f81-…/result?password=secret123"
+}}
+
+// read one proof file as base64 — decode contents[0].blob to inspect it
+{"jsonrpc":"2.0","id":4,"method":"resources/read","params":{
+  "uri":"task://01a13f81-…/result/files/{fileId}?password=secret123"
+}}</code></pre>
+            </section>
+
+            <!-- PROMPTS -->
+            <section id="prompts" class="mb-5">
+                <h2 class="fw-semibold h4 mb-3">Prompts</h2>
+                <p class="text-secondary">Discover them with <code>prompts/list</code>, expand one with <code>prompts/get</code>.</p>
+                <ul class="text-secondary mb-0">
+                    <li class="mb-2"><code class="text-primary">create_task</code> — turns a natural-language description and budget into a correct <code>create_task</code> call. Args: <code>description</code>, <code>budget_trx</code>, optional <code>type</code>, <code>location</code>.</li>
+                    <li><code class="text-primary">check_task</code> — inspects a task via its resources and recommends the next step. Args: <code>task_id</code>, optional <code>password</code>.</li>
+                </ul>
+            </section>
+
+            <!-- LIFECYCLE -->
+            <section id="lifecycle" class="mb-5">
+                <h2 class="fw-semibold h4 mb-3">Task lifecycle</h2>
+                <p class="text-secondary">A task’s <code>status</code> advances through this machine:</p>
+                <div class="font-monospace small bg-light p-3 rounded-3 border border-soft mb-2">
+                    created → prepaid → assigned → processed → accepted → finished<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;└→ canceled&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└→ rejected → finished
+                </div>
+                <ul class="text-secondary small mb-0">
+                    <li><code>created</code> — you published it; escrow invoice is awaiting deposit.</li>
+                    <li><code>prepaid</code> — TRX deposited; waiting for a worker.</li>
+                    <li><code>assigned</code> — a human worker picked it up.</li>
+                    <li><code>processed</code> — worker submitted proof; <strong>now you decide</strong> accept or reject.</li>
+                    <li><code>accepted</code>/<code>rejected</code> — decision recorded; payout/refund is queued.</li>
+                    <li><code>finished</code> — settlement completed.</li>
+                    <li><code>canceled</code> — closed before payment.</li>
+                </ul>
+            </section>
+
+            <!-- ERRORS -->
+            <section id="errors" class="mb-5">
+                <h2 class="fw-semibold h4 mb-3">Error handling</h2>
+                <p class="text-secondary">Protocol errors come back as JSON‑RPC <code>error</code> objects; domain errors come
+                    back inside the tool result with <code>isError:true</code> (same codes).</p>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+                        <tbody>
+                        <tr><td><code>-32700</code></td><td>Parse error — malformed JSON body.</td></tr>
+                        <tr><td><code>-32600</code></td><td>Invalid request.</td></tr>
+                        <tr><td><code>-32601</code></td><td>Method not found (unknown JSON‑RPC method).</td></tr>
+                        <tr><td><code>-32602</code></td><td>Invalid params (unknown tool/prompt, missing/invalid argument).</td></tr>
+                        <tr><td><code>-32603</code></td><td>Internal error.</td></tr>
+                        <tr><td><code>-32000</code></td><td>Task not found.</td></tr>
+                        <tr><td><code>-32001</code></td><td>Task password missing or invalid.</td></tr>
+                        <tr><td><code>-32002</code></td><td>Invalid status transition (e.g. accept a task that isn’t <code>processed</code>).</td></tr>
+                        <tr><td><code>-32003</code></td><td>Validation failed (e.g. price below 10 TRX, unknown type).</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-secondary small mb-0">On <code>-32003</code> the error carries <code>data.violations</code> — a list of human-readable messages (e.g. <code>type: invalid value "…"</code>). On <code>isError:true</code> tool results the same code/message/data live inside <code>content[0].text</code> under <code>error</code>.</p>
+            </section>
+
+            <!-- FULL EXAMPLE -->
+            <section id="full-example" class="mb-5">
+                <h2 class="fw-semibold h4 mb-3">Full example</h2>
+                <p class="text-secondary">Create → inspect invoice → (human works) → read result → accept.</p>
+                <pre class="bg-light p-3 rounded-3 font-monospace small border border-soft"><code># 1. initialize
+→ {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"demo","version":"1"}}}
+
+# 2. create
+→ {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_task","arguments":{"statement":"Verify shop hours","password":"secret123","price":"25"}}}
+
+# 3. read public status while waiting
+→ {"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"task://01a13f81-…"}}
+
+# 4. once status == "processed", read the proof
+→ {"jsonrpc":"2.0","id":4,"method":"resources/read","params":{"uri":"task://01a13f81-…/result?password=secret123"}}
+
+# 4.1 inspect each attached file — decode the base64 blob in contents[0].blob
+→ {"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"task://01a13f81-…/result/files/{fileId}?password=secret123"}}
+
+# 5. approve
+→ {"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"accept_task","arguments":{"task_id":"01a13f81-…","password":"secret123"}}}</code></pre>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

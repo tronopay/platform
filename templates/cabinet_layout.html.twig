@@ -1,0 +1,79 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Cabinet · Tronopay{% endblock %}
+
+{# The landing navbar targets the public site ("For AI agents" / "For humans")
+   and is noise inside the app-like cabinet — same reasoning as the footer. #}
+{% block navbar %}{% endblock %}
+
+{# The landing footer is not relevant inside the mobile app-like cabinet. #}
+{% block footer %}{% endblock %}
+
+{% block content %}
+{# Flex column at least one viewport tall: the content grows and the tab bar
+   is pushed to the bottom of the window even on short pages (and, being
+   position: sticky, stays pinned there while scrolling long ones). #}
+<div class="d-flex flex-column" style="min-height: 100vh; min-height: 100dvh;">
+<div class="cabinet container py-4 flex-grow-1" style="max-width: 720px;"
+     data-controller="location-tracker"
+     data-location-tracker-token-value="{{ csrf_token('cabinet_location') }}"
+     data-location-tracker-url-value="{{ path('app_cabinet_location') }}">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <div class="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center"
+                 style="width: 40px; height: 40px;">
+                <i class="bi bi-person-fill" aria-hidden="true"></i>
+            </div>
+            <div class="lh-sm">
+                <div class="fw-semibold">{{ (app.user.tronAddress ?? '')|slice(0, 6) }}…{{ (app.user.tronAddress ?? '')|slice(-4) }}</div>
+                <div class="text-secondary small">Worker</div>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <form method="post" action="{{ path('app_worker_logout') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                {# Icon-only button: the accessible name has to be explicit. #}
+                <button class="btn btn-sm btn-outline-secondary btn-icon" type="submit"
+                        title="Log out" aria-label="Log out">
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {# Flashes are the cabinet's main feedback channel, so they must be announced. #}
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label == 'success' ? 'success' : label == 'danger' ? 'danger' : 'info' }} alert-dismissible fade show small"
+                 role="{{ label == 'danger' ? 'alert' : 'status' }}">
+                <p class="mb-0">{{ message }}</p>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    {% block cabinet_content %}{% endblock %}
+</div>
+
+{# The tab bar is the cabinet's single navigation: always visible, like a
+   mobile app tab bar. Profile lives here now (was a header icon). #}
+{% set cabinetRoute = app.request.attributes.get('_route') %}
+<nav class="cabinet border-top bg-white position-sticky flex-shrink-0" style="bottom: 0;" aria-label="Cabinet">
+    <div class="container d-flex justify-content-around py-2" style="max-width: 720px;">
+        {% set hasActiveTask = activeTaskId is defined and activeTaskId %}
+        {% set tabs = [
+            {'route': 'app_cabinet', 'label': 'Tasks', 'icon': 'bi-grid', 'href': path('app_cabinet')},
+            {'route': 'app_cabinet_history', 'label': 'History', 'icon': 'bi-clock-history', 'href': path('app_cabinet_history')},
+            {'route': 'app_cabinet_profile', 'label': 'Profile', 'icon': 'bi-person-gear', 'href': path('app_cabinet_profile')},
+        ]|merge(hasActiveTask ? [{'route': 'app_cabinet_task', 'label': 'My task', 'icon': 'bi-clipboard-check', 'href': path('app_cabinet_task', {'id': activeTaskId})}] : []) %}
+        {% for tab in tabs %}
+            <a href="{{ tab.href }}"
+               class="text-decoration-none d-flex flex-column align-items-center small px-3 {{ cabinetRoute == tab.route ? 'text-primary fw-semibold' : 'text-secondary' }}"
+               {% if cabinetRoute == tab.route %}aria-current="page"{% endif %}>
+                <i class="bi {{ tab.icon }} fs-5" aria-hidden="true"></i> {{ tab.label }}
+            </a>
+        {% endfor %}
+    </div>
+</nav>
+</div>
+{% endblock %}

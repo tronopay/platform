@@ -1,0 +1,61 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Login · Tronopay{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-sm-8 col-md-6 col-lg-4">
+            <div class="card border-soft shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-person-check fs-3 text-primary"></i>
+                        <h1 class="h4 fw-bold mb-0">Worker login</h1>
+                    </div>
+                    <p class="text-secondary small mb-4">Use your Tron wallet address and password.</p>
+
+                    {% for label, messages in app.flashes %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ label == 'success' ? 'success' : label == 'danger' ? 'danger' : 'info' }} alert-dismissible fade show py-2 small"
+                                 role="{{ label == 'danger' ? 'alert' : 'status' }}">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+
+                    {% if error %}
+                        <div class="alert alert-danger py-2 small" role="alert">
+                            {{ error.messageKey|trans(error.messageData, 'security') }}
+                        </div>
+                    {% endif %}
+
+                    <form method="post" action="{{ path('app_worker_login') }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                        <div class="mb-3">
+                            <label class="form-label" for="username">Tron wallet address</label>
+                            <input class="form-control" type="text" id="username" name="_username"
+                                   value="{{ last_username }}" required autofocus autocomplete="username"
+                                   autocapitalize="none" spellcheck="false" placeholder="T...">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label" for="password">Password</label>
+                            <input class="form-control" type="password" id="password" name="_password"
+                                   required autocomplete="current-password">
+                        </div>
+
+                        <button class="btn btn-primary w-100" type="submit" id="login_submit">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Log in
+                        </button>
+                    </form>
+
+                    <p class="text-center small text-secondary mt-4 mb-0">
+                        No account yet? <a href="{{ path('app_register') }}">Register with your wallet</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

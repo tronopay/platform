@@ -1,0 +1,72 @@
+{% extends 'cabinet_layout.html.twig' %}
+
+{% block cabinet_content %}
+    {# Bootstrap 5.3's semantic subtle/emphasis pairs keep every status badge at
+       WCAG AA. The cabinet's bg-*-opacity-10 idiom is not used here because
+       --bs-danger-rgb is not overridden in app.css and would fall to ~3.9:1. #}
+    {% set statusBadges = {
+        'processed': 'bg-info-subtle text-info-emphasis',
+        'accepted': 'bg-success-subtle text-success-emphasis',
+        'rejected': 'bg-danger-subtle text-danger-emphasis',
+        'finished': 'bg-secondary-subtle text-secondary-emphasis',
+    } %}
+
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h1 class="h5 fw-bold mb-0">History</h1>
+        <span class="text-secondary small">{{ history.total }} submitted</span>
+    </div>
+
+    {# Payment feedback the worker used to have none of (ui-ux-analysis.md §6.5):
+       accepted tasks released money, everything else did not. #}
+    <div class="card border-soft shadow-sm mb-4">
+        <div class="card-body">
+            <div class="text-secondary small">Total earned</div>
+            <div class="d-flex align-items-baseline gap-1">
+                <span class="fs-3 fw-bold text-success" data-history-total>{{ (totalEarnedSun / 1000000)|number_format(6) }}</span>
+                <span class="fw-semibold text-success">TRX</span>
+            </div>
+            <div class="text-secondary small mt-1">Accepted tasks only — money released to you.</div>
+        </div>
+    </div>
+
+    {% if history.items is empty %}
+        <div class="text-center text-secondary py-5">
+            <i class="bi bi-clock-history fs-1 d-block mb-2" aria-hidden="true"></i>
+            No completed tasks yet. Tasks you submit appear here with their review status.
+        </div>
+    {% else %}
+        <div class="d-grid gap-2 mb-4">
+            {% for task in history.items %}
+                {% set statusClass = statusBadges[task.status.value] ?? 'bg-secondary-subtle text-secondary-emphasis' %}
+                <div class="card border-soft shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-1 gap-2">
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="badge bg-primary bg-opacity-10 text-primary">{{ task.type.label()|upper }}</span>
+                                <span class="badge {{ statusClass }}">{{ task.status.label() }}</span>
+                            </div>
+                            <span class="fw-semibold small {{ task.status.isPaid() ? 'text-success' : 'text-secondary' }}">
+                                <i class="bi bi-coin me-1" aria-hidden="true"></i>{{ (task.priceSun / 1000000)|number_format(6) }} TRX
+                            </span>
+                        </div>
+                        <p class="mb-1 text-secondary small">{{ task.statement }}</p>
+                        <div class="text-secondary small">
+                            <i class="bi bi-clock me-1" aria-hidden="true"></i>
+                            <span class="visually-hidden">Last update </span>{{ task.updatedAt|date('d.m.Y H:i') }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if pageData.totalPages > 1 %}
+        <nav class="d-flex justify-content-between align-items-center" aria-label="History pages">
+            <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_cabinet_history', {'per': pageData.per, 'page': pageData.page - 1}) }}"
+               {% if pageData.page <= 1 %}tabindex="-1" aria-disabled="true"{% endif %}>&laquo; Prev</a>
+            <span class="text-secondary small">Page {{ pageData.page }} of {{ pageData.totalPages }}</span>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_cabinet_history', {'per': pageData.per, 'page': pageData.page + 1}) }}"
+               {% if pageData.page >= pageData.totalPages %}tabindex="-1" aria-disabled="true"{% endif %}>Next &raquo;</a>
+        </nav>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,53 @@
+
+framework:
+    workflows:
+        task_status:
+            type: state_machine
+            marking_store:
+                type: 'method'
+                property: 'status'
+            supports:
+                - App\Entity\Task
+            initial_marking: created
+            places:
+                - created
+                - canceled
+                - prepaid
+                - assigned
+                - processed
+                - accepted
+                - rejected
+                - finished
+
+            transitions:
+                to_created:
+                    from: created
+                    to: created
+                to_canceled_created:
+                    from: created
+                    to: canceled
+                to_prepaid:
+                    from: created
+                    to: prepaid
+                to_assigned:
+                    from: prepaid
+                    to: assigned
+                to_prepaid_from_assigned:
+                    from: assigned
+                    to: prepaid
+                to_processed:
+                    from: assigned
+                    to: processed
+                to_accepted:
+                    from: processed
+                    to: accepted
+                to_rejected:
+                    from: processed
+                    to: rejected
+                to_finished_accepted:
+                    from: accepted
+                    to: finished
+                to_finished_rejected:
+                    from: rejected
+                    to: finished
+

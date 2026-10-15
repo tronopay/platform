@@ -1,0 +1,83 @@
+{% extends 'cabinet_layout.html.twig' %}
+
+{% block title %}Profile · Tronopay{% endblock %}
+
+{% block cabinet_content %}
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h1 class="h5 fw-bold mb-0">Profile</h1>
+    </div>
+
+    <div class="card border-soft shadow-sm mb-3">
+        <div class="card-body">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                <div>
+                    <div class="fw-semibold">Location</div>
+                    <div class="text-secondary small">
+                        Used to filter and sort tasks by distance. Optional — the cabinet works without it.
+                    </div>
+                </div>
+                {% if hasLocation %}
+                    <span class="badge bg-success bg-opacity-10 text-success flex-shrink-0">set</span>
+                {% else %}
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary flex-shrink-0">not set</span>
+                {% endif %}
+            </div>
+
+            {% if hasLocation %}
+                <p class="mb-2 small">
+                    <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
+                    <span class="font-monospace">{{ latitude|number_format(6) }}, {{ longitude|number_format(6) }}</span>
+                </p>
+                {% if locationUpdatedAt %}
+                    <p class="text-secondary small mb-3">Updated {{ locationUpdatedAt|date('d.m.Y H:i') }} UTC</p>
+                {% endif %}
+            {% endif %}
+
+            <div data-controller="profile-location">
+                <button type="button" class="btn btn-sm btn-outline-primary w-100 mb-2"
+                        data-action="profile-location#locate">
+                    <i class="bi bi-crosshair me-1" aria-hidden="true"></i> Use my device location
+                </button>
+                <p class="text-secondary small mb-3" data-profile-location-target="status" role="status"></p>
+
+                <form method="post" action="{{ path('app_cabinet_profile') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('cabinet_profile') }}">
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small mb-1" for="profile-latitude">Latitude</label>
+                            <input id="profile-latitude" name="latitude" type="number" step="any" min="-90" max="90"
+                                   class="form-control form-control-sm" inputmode="decimal"
+                                   value="{{ latitude is not null ? latitude : '' }}"
+                                   data-profile-location-target="latitude">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1" for="profile-longitude">Longitude</label>
+                            <input id="profile-longitude" name="longitude" type="number" step="any" min="-180" max="180"
+                                   class="form-control form-control-sm" inputmode="decimal"
+                                   value="{{ longitude is not null ? longitude : '' }}"
+                                   data-profile-location-target="longitude">
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-primary w-100" type="submit">
+                        <i class="bi bi-save me-1" aria-hidden="true"></i> Save location
+                    </button>
+                </form>
+
+                {% if hasLocation %}
+                    <form method="post" action="{{ path('app_cabinet_profile') }}" class="mt-2">
+                        <input type="hidden" name="_token" value="{{ csrf_token('cabinet_profile') }}">
+                        <input type="hidden" name="clear" value="1">
+                        <button class="btn btn-sm btn-outline-danger w-100" type="submit">Clear location</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-soft shadow-sm">
+        <div class="card-body">
+            <div class="fw-semibold mb-1">Wallet</div>
+            <p class="font-monospace small mb-0">{{ app.user.tronAddress }}</p>
+        </div>
+    </div>
+{% endblock %}

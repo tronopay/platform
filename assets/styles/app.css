@@ -1,0 +1,124 @@
+
+/* Minimal, unobtrusive tweaks to match the "neat Bootstrap" request */
+body {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f8fafc;
+    /* very light slate */
+    color: #0b1e33;
+}
+
+.hero {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e6f0fa 100%);
+    border-bottom: 1px solid #dee7f0;
+}
+
+.step-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    background: #ffffff;
+    transition: transform 0.1s ease, box-shadow 0.15s ease;
+    height: 100%;
+}
+
+.step-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 20, 30, 0.08);
+    border-color: #bdd3e8;
+}
+
+.step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    background-color: #0d6efd;
+    color: white;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.icon-badge {
+    background: #e9f2ff;
+    /* 5.7:1 on #e9f2ff; Bootstrap's text-primary (#0d6efd) only reaches 3.99:1. */
+    color: #0a58ca;
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+.icon-badge-success {
+    /* 5.7:1 on #e9f2ff; text-success (#198754) only reaches 4.02:1. */
+    color: #146c43;
+}
+
+.badge-soft-success {
+    background-color: #e2f3e6;
+    color: #0e5c2e;
+    font-weight: 500;
+}
+
+.badge-soft-warning {
+    background-color: #fff2dd;
+    color: #8a5b00;
+    font-weight: 500;
+}
+
+.border-soft {
+    border-color: #e2e8f0 !important;
+}
+
+footer {
+    background-color: #ffffff;
+    border-top: 1px solid #dee7f0;
+}
+
+.code-note {
+    font-size: 0.85rem;
+    background-color: #f1f5f9;
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    color: #2c3e50;
+    border-left: 3px solid #0d6efd;
+}
+
+/*
+ * Cabinet accessibility fixes — see docs/ui-ux-analysis.md §4 and §5.
+ *
+ * Bootstrap's default shades are tuned for pure white; the cabinet sits on
+ * #f8fafc, where several of them fall just under the WCAG AA 4.5:1 text
+ * contrast floor. Darkening the shades inside this scope lifts every utility
+ * (`text-*`, `bg-*-opacity-10`, `btn-*`, links) in one place instead of
+ * patching each badge by hand.
+ *
+ * Measured (composited over #f8fafc) before → after:
+ *   badge type (text-primary)   3.93 → 5.53  ✓
+ *   badge status (text-info)    1.74 → 5.85  ✓ (the worst offender)
+ *   badge assigned (text-success) 3.82 → 5.33 ✓
+ *   price / success             4.33 → 6.16  ✓
+ *   "Worker"/muted (secondary)  4.48 → 5.82  ✓
+ */
+.cabinet {
+    --bs-primary-rgb: 10, 88, 202;
+    --bs-secondary-rgb: 92, 99, 106;
+    --bs-secondary-color: #5c636a;
+    --bs-success-rgb: 20, 108, 67;
+    --bs-info-rgb: 5, 97, 111;
+    --bs-link-color-rgb: 10, 88, 202;
+}
+
+/* Mobile tap targets: 44x44 px (the audit measured 31-38 px buttons). */
+.cabinet .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+}
+
+/* Icon-only buttons need the width as well. */
+.cabinet .btn-icon {
+    min-width: 44px;
+}

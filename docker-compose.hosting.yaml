@@ -1,0 +1,173 @@
+# Production stack. Entry point is the (external) Nginx Proxy Manager network:
+# NPM terminates TLS and proxies to the "php-app" container by name on port 80.
+#
+# Before first start / on every deploy:
+#   cp stack.env.dist stack.env && chmod 600 stack.env   # fill in real secrets
+#   bin/console asset-map:compile                        # generate public/assets (host)
+#   docker compose -f docker-compose.hosting.yaml build
+#   docker compose -f docker-compose.hosting.yaml run --rm php-fpm \
+#       ./bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+#   docker compose -f docker-compose.hosting.yaml up -d
+
+services:
+
+  php-app:
+    build:
+      context: .
+      dockerfile: ./docker/nginx/Dockerfile
+    restart: unless-stopped
+    init: true
+    depends_on:
+      php-fpm:
+        condition: service_healthy
+    networks:
+      - nginx-proxy-manager_default
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 64M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  php-fpm:
+    build:
+      context: .
+      dockerfile: ./docker/php-fpm/Dockerfile
+    environment:
+      APP_ENV: prod
+    env_file:
+      - stack.env
+    restart: unless-stopped
+    init: true
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - uploads-data:/app/var/uploads
+      - payout-data:/app/var/payout
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(fsockopen('127.0.0.1', 9000) ? 0 : 1);"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  worker:
+    # Consumes the `async` messenger transport (webhooks, deadline finalizer,
+    # mailer/notifier). Scale horizontally if needed.
+    build:
+      context: .
+      dockerfile: ./docker/php-fpm/Dockerfile
+    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=256M"]
+    environment:
+      APP_ENV: prod
+    env_file:
+      - stack.env
+    restart: unless-stopped
+    init: true
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - uploads-data:/app/var/uploads
+      - payout-data:/app/var/payout
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  scheduler:
+    # Runs the Symfony Scheduler transport (app:payment:process on a fixed
+    # interval). Keep a single instance.
+    build:
+      context: .
+      dockerfile: ./docker/php-fpm/Dockerfile
+    command: ["php", "bin/console", "messenger:consume", "scheduler_default", "--time-limit=3600"]
+    environment:
+      APP_ENV: prod
+    env_file:
+      - stack.env
+    restart: unless-stopped
+    init: true
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - uploads-data:/app/var/uploads
+      - payout-data:/app/var/payout
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  database:
+    image: postgis/postgis:18-3.6
+    env_file:
+      - stack.env
+    restart: unless-stopped
+    stop_grace_period: 1m
+    volumes:
+      - pg-data:/var/lib/postgresql/18/docker
+    healthcheck:
+      # Uses the container's own env (from stack.env), not compose interpolation.
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-app}\" -d \"$${POSTGRES_DB:-app}\""]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  pg-data:
+  uploads-data:
+  payout-data:
+
+networks:
+  nginx-proxy-manager_default:
+    external: true
+  internal:
+    driver: bridge

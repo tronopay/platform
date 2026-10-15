@@ -1,0 +1,26 @@
+# Build context exclusions: keep secrets and build artifacts out of images.
+# dockerignore copied from:
+# https://github.com/symfony/recipes/blob/main/symfony/framework-bundle/4.4/.dockerignore
+
+.git
+.gitignore
+
+# Environment files with secrets — keep .env and .env.dev (defaults, needed by
+# cache:clear during the build). Only local overrides hold real secrets.
+.env.*.local
+stack.env
+
+# Built/generated directories
+var/
+vendor/
+
+# Dev/test
+tests/
+.phpunit.cache/
+phpunit.xml
+
+# IDE
+.idea/
+
+# Compose files (not needed in images)
+docker-compose*.yaml

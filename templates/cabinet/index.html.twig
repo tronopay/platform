@@ -1,0 +1,133 @@
+{% extends 'cabinet_layout.html.twig' %}
+
+{% block cabinet_content %}
+    {% if activeTask %}
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h1 class="h5 fw-bold mb-0">Active task</h1>
+            <span class="badge bg-success bg-opacity-10 text-success">assigned</span>
+        </div>
+        <div class="card border-soft shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+                    <span class="badge bg-primary bg-opacity-10 text-primary">{{ activeTask.type.value|upper }}</span>
+                    <span class="fw-semibold text-success"><i class="bi bi-coin me-1"></i>{{ (activeTask.priceSun / 1000000)|number_format(6) }} TRX</span>
+                </div>
+                <p class="mb-3">{{ activeTask.statement }}</p>
+                <a href="{{ path('app_cabinet_task', {'id': activeTask.id}) }}" class="btn btn-sm btn-primary w-100">
+                    <i class="bi bi-pencil-square me-1"></i> Work on the task
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h1 class="h5 fw-bold mb-0">Available tasks</h1>
+        <span class="text-secondary small">{{ pool.total }} in the pool</span>
+    </div>
+
+    {% if not workerLocation %}
+        <div class="alert alert-info py-2 small mb-3" role="status">
+            <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
+            Set your location in your
+            <a href="{{ path('app_cabinet_profile') }}" class="alert-link">profile</a>
+            to filter and sort tasks by distance.
+        </div>
+    {% endif %}
+
+    <form method="get" action="{{ path('app_cabinet') }}" class="card border-soft shadow-sm mb-3" data-controller="pool-filter">
+        <div class="card-body">
+            {# First line: type and distance, evenly split (50/50). #}
+            <div class="d-flex align-items-end gap-2">
+                <div class="flex-grow-1" style="min-width: 0;">
+                    <label class="form-label small mb-1" for="pool-type">Type</label>
+                    <select id="pool-type" name="type" class="form-select form-select-sm" data-action="change->pool-filter#submit">
+                        <option value="">All types</option>
+                        {% for t in taskTypes %}
+                            <option value="{{ t.value }}" {{ filterState.type is not null and filterState.type.value == t.value ? 'selected' }}>{{ t.label() }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex-grow-1" style="min-width: 0;">
+                    <label class="form-label small mb-1" for="pool-radius">Distance</label>
+                    <select id="pool-radius" name="radius" class="form-select form-select-sm" data-action="change->pool-filter#submit" {% if not workerLocation %}disabled{% endif %}>
+                        <option value="">No limit</option>
+                        {% for r in [1, 3, 5, 10, 20, 50] %}
+                            <option value="{{ r }}" {{ filterState.radius == r ? 'selected' }}>{{ r }} mi</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {# Second line: tasks without location, sort and page size, evenly split (33/33/33). #}
+            <div class="d-flex align-items-end gap-2 mt-2">
+                <div class="flex-grow-1" style="min-width: 0;">
+                    <label class="form-label small mb-1" for="pool-noloc">Without location</label>
+                    <select id="pool-noloc" name="incl_noloc" class="form-select form-select-sm" data-action="change->pool-filter#submit">
+                        <option value="show" {{ filterState.incl_noloc == 'show' ? 'selected' }}>Show</option>
+                        <option value="hide" {{ filterState.incl_noloc == 'hide' ? 'selected' }}>Hide</option>
+                    </select>
+                </div>
+                <div class="flex-grow-1" style="min-width: 0;">
+                    <label class="form-label small mb-1" for="pool-sort">Sort by</label>
+                    <select id="pool-sort" name="sort" class="form-select form-select-sm" data-action="change->pool-filter#submit">
+                        <option value="newest" {{ filterState.sort == 'newest' ? 'selected' }}>Newest</option>
+                        <option value="price_high" {{ filterState.sort == 'price_high' ? 'selected' }}>Price: high to low</option>
+                        <option value="price_low" {{ filterState.sort == 'price_low' ? 'selected' }}>Price: low to high</option>
+                        <option value="nearest" {{ filterState.sort == 'nearest' ? 'selected' }} {% if not workerLocation %}disabled{% endif %}>Nearest</option>
+                    </select>
+                </div>
+                <div class="flex-grow-1" style="min-width: 0;">
+                    <label class="form-label small mb-1" for="pool-per">Per page</label>
+                    <select id="pool-per" name="per" class="form-select form-select-sm" data-action="change->pool-filter#submit">
+                        {% for n in [10, 20, 50] %}
+                            <option value="{{ n }}" {{ pageData.per == n ? 'selected' }}>{{ n }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    {% if pool.items is empty %}
+        <div class="text-center text-secondary py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            No paid tasks match the current filters.
+        </div>
+    {% else %}
+        <div class="d-grid gap-2 mb-4">
+            {% for row in pool.items %}
+                <div class="card border-soft shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-1 gap-2">
+                            <span class="badge bg-primary bg-opacity-10 text-primary">{{ row.task.type.value|upper }}</span>
+                            <span class="fw-semibold text-success small"><i class="bi bi-coin me-1"></i>{{ (row.task.priceSun / 1000000)|number_format(6) }} TRX</span>
+                        </div>
+                        {% if workerLocation and row.distanceMiles is not null %}
+                            <div class="text-secondary small mb-1">
+                                <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>≈ {{ row.distanceMiles }} mi
+                            </div>
+                        {% endif %}
+                        <p class="mb-3 text-secondary small">{{ row.task.statement }}</p>
+                        <form method="post" action="{{ path('app_cabinet_assign', {'id': row.task.id}) }}"
+                              onsubmit="return confirm('Take this task? You will have 2 hours to submit the result.')">
+                            <input type="hidden" name="_token" value="{{ csrf_token('cabinet_assign_' ~ row.task.id) }}">
+                            <button class="btn btn-sm btn-outline-primary w-100" type="submit">
+                                <i class="bi bi-hand-index-thumb me-1"></i> Take the task
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if pageData.totalPages > 1 %}
+        {% set base = {'type': filterState.type ? filterState.type.value : '', 'radius': filterState.radius ?? '', 'incl_noloc': filterState.incl_noloc, 'sort': filterState.sort, 'per': pageData.per} %}
+        <nav class="d-flex justify-content-between align-items-center" aria-label="Pool pages">
+            <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_cabinet', base|merge({'page': pageData.page - 1})) }}"
+               {% if pageData.page <= 1 %}tabindex="-1" aria-disabled="true"{% endif %}>&laquo; Prev</a>
+            <span class="text-secondary small">Page {{ pageData.page }} of {{ pageData.totalPages }}</span>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_cabinet', base|merge({'page': pageData.page + 1})) }}"
+               {% if pageData.page >= pageData.totalPages %}tabindex="-1" aria-disabled="true"{% endif %}>Next &raquo;</a>
+        </nav>
+    {% endif %}
+{% endblock %}

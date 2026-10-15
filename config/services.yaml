@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+# Executor cabinet (ui-spec.md §9, §10): local uploads root, 2h deadline, result limits
+    uploads_dir: '%env(UPLOAD_DIR)%'
+    task_execution_deadline_seconds: '%env(int:resolve:TASK_EXECUTION_DEADLINE_SECONDS)%'
+    task_result_message_maxlength: 5000
+    task_result_file_max_size: 25M
+    task_result_file_max_count: 10
+
+# Escrow payouts (docs/payouts-redesign.md): intent/report files exchanged with the settlement machine
+    payouts_dir: '%env(PAYOUT_DIR)%'
+    payout_ttl: '%env(PAYOUT_TTL)%'
+    payout_fee_margin: '%env(int:PAYOUT_FEE_MARGIN)%'
+    payout_batch_size: '%env(int:PAYOUT_BATCH_SIZE)%'
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+#        bind:
+#            string $xPub: '%env(TRON_XPUB_MASTER_KEY)%'
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+
+    # Bind the payment indexer contract to its only implementation.
+    App\Service\TronGatewayInterface: '@App\Service\TronGateway'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones

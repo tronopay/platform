@@ -1,0 +1,71 @@
+
+services:
+
+  php-app:
+    build:
+      dockerfile: ./docker/nginx/Dockerfile
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+      - .env.dev
+
+
+  php-fpm:
+    build:
+      dockerfile: ./docker/php-fpm/Dev.Dockerfile
+    env_file:
+      - .env
+      - .env.dev
+      - .env.local
+    volumes:
+      - ./:/app
+
+
+  nodejs:
+    image: node:24-alpine3.21
+    volumes:
+      - ./:/app
+    working_dir: /app
+    user: node
+
+
+###> symfony/mailer ###
+  mailer:
+    image: axllent/mailpit
+    ports:
+      - "1025"
+      - "8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+###< symfony/mailer ###
+
+
+###> doctrine/doctrine-bundle ###
+  database:
+#    image: postgres:${POSTGRES_VERSION:-18}-alpine
+    image: postgis/postgis:${POSTGRES_VERSION:-18}-3.6
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      # You should definitely change the password in production
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-app}", "-U", "${POSTGRES_USER:-app}"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - database_data:/var/lib/postgresql/${POSTGRES_VERSION:-18}/docker:rw
+      # - database_data:/var/lib/postgresql/data:rw
+      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
+      # - ./docker/db/data:/var/lib/postgresql/data:rw
+###< doctrine/doctrine-bundle ###
+
+volumes:
+###> doctrine/doctrine-bundle ###
+  database_data:
+###< doctrine/doctrine-bundle ###

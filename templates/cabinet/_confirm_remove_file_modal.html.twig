@@ -1,0 +1,35 @@
+{#
+    Confirmation modal for the immediate removal of a single result file.
+
+    One shared modal: the X button on each file row carries the per-file action
+    URL, CSRF token and original name; the file-remove Stimulus controller copies
+    them into this form right before the modal opens (Bootstrap exposes the
+    triggering element as the `show.bs.modal` event's relatedTarget).
+
+    Rendered *outside* the result form on purpose: this form POSTs to its own
+    route (CabinetController::removeFile), and nested forms are invalid HTML.
+#}
+<div class="modal fade" id="removeFileModal" tabindex="-1" aria-labelledby="removeFileModalLabel" aria-hidden="true"
+     data-controller="file-remove">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" data-file-remove-target="form">
+                <input type="hidden" name="_token" data-file-remove-target="token">
+                <div class="modal-body text-center p-4">
+                    <i class="bi bi-trash text-danger display-5"></i>
+                    <h5 class="fw-bold mt-2" id="removeFileModalLabel">Remove the file?</h5>
+                    <p class="text-secondary small mb-0">
+                        <strong data-file-remove-target="name"></strong> will be permanently
+                        removed from the saved result.
+                    </p>
+                </div>
+                <div class="modal-footer d-flex gap-2">
+                    <button type="button" class="btn btn-light flex-grow-1" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-outline-danger flex-grow-1">
+                        <i class="bi bi-trash me-1"></i> Remove
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
