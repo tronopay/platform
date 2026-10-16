@@ -8,9 +8,12 @@
 # Deploy:
 #   cp stack.env.dist stack.env && chmod 600 stack.env   # fill in real secrets
 #   docker compose -f docker-compose.hosting.yaml build
-#   docker compose -f docker-compose.hosting.yaml run --rm php-fpm \
-#       ./bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 #   docker compose -f docker-compose.hosting.yaml up -d
+#
+# The php-fpm image applies Doctrine migrations automatically on startup
+# (RUN_MIGRATIONS=1 in the php-fpm service), right after the database becomes
+# healthy and before php-fpm accepts requests — no separate manual
+# `doctrine:migrations:migrate` step is needed.
 
 services:
 
@@ -51,6 +54,8 @@ services:
     pull_policy: build
     environment:
       APP_ENV: prod
+      # The php-fpm entrypoint applies Doctrine migrations before starting.
+      RUN_MIGRATIONS: "1"
     env_file:
       - stack.env
     restart: unless-stopped

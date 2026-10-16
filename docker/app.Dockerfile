@@ -35,8 +35,12 @@ RUN mv $PHP_INI_DIR/php.ini-production $PHP_INI_DIR/php.ini
 COPY --from=builder --chown=www-data:www-data /app /app
 RUN mkdir -p var/cache var/log \
     && chown -R www-data:www-data var
+# Apply Doctrine migrations on startup when RUN_MIGRATIONS=1 (web php-fpm only).
+COPY docker/php-fpm/entrypoint.sh /usr/local/bin/docker-php-entrypoint-migrate
+RUN chmod 0755 /usr/local/bin/docker-php-entrypoint-migrate
 USER www-data
 EXPOSE 9000
+ENTRYPOINT ["/usr/local/bin/docker-php-entrypoint-migrate"]
 CMD ["/usr/local/sbin/php-fpm", "-F"]
 
 ########## Nginx (static files + reverse proxy to FPM) ##########
